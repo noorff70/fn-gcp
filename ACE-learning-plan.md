@@ -115,6 +115,17 @@ Nothing is left running between sessions, including free-tier items. Recreating 
 3. **Tear down at the end of every session.** Each week below ends with a **Teardown** block that lists the delete commands in the right order (dependent resources first). Run it, then tick off each row in `notes/resources.md`.
 4. **Prove it's clean.** Run [`scripts/ace-leftovers.sh`](scripts/ace-leftovers.sh) in Cloud Shell (`bash scripts/ace-leftovers.sh ace-fruit-XXXX`). It lists everything still left in the project and exits with a non-zero status if anything billable remains. **Don't end a session until it prints `CLEAN`.**
 
+### Secrets rule: secrets live only in `private/` and are never committed or pushed
+
+The GitHub repo is **public**, so every secret goes in `D:\dev\gcp\private\`. `.gitignore` ignores that folder (and Terraform state, `*-key.json`, `*.pem`, `*.p12`, `*.tfvars`, `.env*`).
+
+- **What counts as a secret:** DB passwords, service-account key files (avoid creating them at all; use impersonation), access tokens, signed URLs, real `.env` files, `*.tfvars` with passwords, and Terraform state.
+- **How commands use it:** commands read secrets from files, e.g. `--password="$(cat private/fruit-db-pass.txt)"` or `--data-file=private/fruit-db-pass.txt`. Never paste a secret value into a command you'll save in notes.
+- **Notes and ledger:** [`notes/resources.md`](notes/resources.md) and `notes/weekN.md` are public. Write `***` or `private/<file>` instead of a value.
+- **Before every push:** run `git status` and confirm nothing under `private/` appears. Never use `git add -f` on secret files. If a secret is ever pushed, **rotate it immediately** (change the password, delete the key). Removing it from git history is not enough.
+- **Cloud Shell:** `private/` is not in the clone. Upload the file you need through the Cloud Shell editor or `gcloud cloud-shell scp`, and delete it when the session ends.
+- `.env.dev` was committed before this rule (it holds no secret today). Untrack it with `git rm --cached .env.dev` as part of the Week 1 fixes, and keep real values in `private/` from then on.
+
 Safety nets in case you miss something: the budget alert (item 3 below), the billing report, filtered by label, checked weekly, and deleting the whole project after the exam.
 
 1. **Free trial and free tier.** New accounts usually get a **US$300 / 90-day** credit, and there is an "Always Free" tier. Check [cloud.google.com/free](https://cloud.google.com/free) for the current limits. Relevant Always Free items:
@@ -279,10 +290,10 @@ gcloud run services update-traffic fruit --to-revisions=LATEST=10 ; gcloud run s
 gcloud run revisions list --service=fruit
 gcloud storage buckets create gs://ace-fruit-XXXX-uploads --location=us-central1 --uniform-bucket-level-access
 gcloud storage buckets update gs://ace-fruit-XXXX-uploads --versioning --lifecycle-file=lifecycle.json
-gcloud storage cp fruits.csv gs://ace-fruit-XXXX-uploads/ ; gcloud storage sign-url gs://.../fruits.csv --duration=10m --private-key-file=KEY.json
+gcloud storage cp fruits.csv gs://ace-fruit-XXXX-uploads/ ; gcloud storage sign-url gs://.../fruits.csv --duration=10m --impersonate-service-account=fruit-run-sa@ace-fruit-XXXX.iam.gserviceaccount.com
 gcloud functions deploy fruit-loader --gen2 --runtime=python312 --region=us-central1 --trigger-bucket=ace-fruit-XXXX-uploads --entry-point=on_upload --source=./loader
 ```
-(To sign the URL without a key file, add `--impersonate-service-account=...`. That is the best practice; avoid downloading SA keys.)
+(Signing with impersonation needs no key file, which is the best practice. You need `roles/iam.serviceAccountTokenCreator` on the SA. If you ever do download an SA key, it goes only in `private/`, and you delete the key with `gcloud iam service-accounts keys delete` in the teardown.)
 
 **Cost:** Cloud Run, Cloud Build, Artifact Registry and GCS should all stay inside the free allowances. Even so, delete everything (golden rule). Weeks 4–6 start by recreating the repo, image, service account and Cloud Run service with the Week 3 commands, which is good repetition.
 
@@ -321,12 +332,14 @@ bash scripts/ace-leftovers.sh ace-fruit-XXXX
 **gcloud to practise**
 ```bash
 gcloud sql instances create fruit-sql --database-version=MYSQL_8_0 --edition=ENTERPRISE --tier=db-f1-micro --region=us-central1 --storage-size=10GB --no-backup
-gcloud sql databases create inventory --instance=fruit-sql ; gcloud sql users create fruit --instance=fruit-sql --password=...
+gcloud sql databases create inventory --instance=fruit-sql
+openssl rand -base64 24 > private/fruit-db-pass.txt          # the password only ever lives in private/
+gcloud sql users create fruit --instance=fruit-sql --password="$(cat private/fruit-db-pass.txt)"
 gcloud sql import sql fruit-sql gs://ace-fruit-XXXX-uploads/inventory.sql --database=inventory
 gcloud sql backups create --instance=fruit-sql ; gcloud sql backups list --instance=fruit-sql
 gcloud sql backups restore BACKUP_ID --restore-instance=fruit-sql
 gcloud sql instances patch fruit-sql --activation-policy=NEVER    # stop when not in use
-printf 'secret' | gcloud secrets create fruit-db-pass --data-file=-
+gcloud secrets create fruit-db-pass --data-file=private/fruit-db-pass.txt
 gcloud run deploy fruit --image=... --add-cloudsql-instances=ace-fruit-XXXX:us-central1:fruit-sql --set-secrets=DB_PASS=fruit-db-pass:latest
 bq mk fruit_ds ; bq load --source_format=CSV --autodetect fruit_ds.prices gs://.../prices.csv
 bq query --use_legacy_sql=false --dry_run 'SELECT ...' ; bq ls -j
@@ -373,7 +386,7 @@ bash scripts/ace-leftovers.sh ace-fruit-XXXX
 8. (Optional, short) Create a Standard zonal cluster with 1 node, add or resize or delete a node pool, then **delete the cluster**.
 
 **Hands-on (IaC)**
-9. Write Terraform in `infra/` that creates the VPC, subnet, firewall, Artifact Registry repo and Cloud Run service. Run `terraform plan/apply/destroy`.
+9. Write Terraform in `infra/` that creates the VPC, subnet, firewall, Artifact Registry repo and Cloud Run service. Run `terraform plan/apply/destroy`. Put any secret variables in `private/fruit.tfvars` and pass them with `-var-file=../private/fruit.tfvars`. The local `terraform.tfstate` is git-ignored because it can contain secrets.
 
 **gcloud and kubectl to practise**
 ```bash
@@ -403,7 +416,7 @@ gcloud container clusters delete fruit-gke --region=us-central1 --quiet
 kubectl delete hpa fruit ; kubectl delete service fruit ; kubectl delete deployment fruit
 gcloud container clusters delete fruit-gke --region=us-central1 -q
 gcloud container clusters delete std-zonal --zone=us-central1-a -q            # if you made it
-(cd infra && terraform destroy -auto-approve)
+(cd infra && terraform destroy -auto-approve -var-file=../private/fruit.tfvars)
 gcloud compute instances delete fruit-private-vm --zone=us-central1-a -q
 gcloud compute routers nats delete fruit-nat --router=fruit-router --region=us-central1 -q
 gcloud compute routers delete fruit-router --region=us-central1 -q

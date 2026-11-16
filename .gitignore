@@ -1,0 +1,16 @@
+# Secrets rule: every secret lives in private/ and is never committed or pushed
+# (passwords, service-account keys, tokens, real .env files, tfvars with secrets).
+# See "Secrets rule" in ACE-learning-plan.md, section 2.
+private/
+
+# Safety net in case a secret file ends up outside private/ by mistake
+*-key.json
+*.pem
+*.p12
+*.tfvars
+.env*
+
+# Terraform state can contain secrets (e.g. the Cloud SQL password)
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
