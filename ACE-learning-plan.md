@@ -81,7 +81,7 @@ Sources: the [exam guide](https://cloud.google.com/learn/certification/guides/cl
 
 | Objective | Exercise on the fruit project | Week |
 |---|---|---|
-| 1.1 Resource hierarchy, org policies, IAM roles, Cloud Identity, enabling APIs, quotas | Create the `ace-fruit-*` project and folders (if you have an org), enable APIs, grant roles to a second Gmail account, view quotas | 1 |
+| 1.1 Resource hierarchy, org policies, IAM roles, Cloud Identity, enabling APIs, quotas | Use the `fn-fruits` project; create folders (if you have an org), enable APIs, grant roles to a second Gmail account, view quotas | 1 |
 | 1.1 Operations suite setup | Create the Monitoring workspace/scope, install Ops Agent | 1, 6 |
 | 1.2 Billing accounts, linking, budgets and alerts, billing export | Link the project, create a budget with 50/90/100% alerts, export billing to BigQuery | 1 |
 | 2.1 Compute choice; Spot VMs and custom machine types | Write a decision note "VM vs MIG vs Cloud Run vs GKE vs Functions for fruit"; create a Spot VM with a custom machine type | 2 |
@@ -113,7 +113,7 @@ Nothing is left running between sessions, including free-tier items. Recreating 
 1. **Write the delete command first.** Before you run any `create`, `deploy`, `submit` or `apply`, add a line to [`notes/resources.md`](notes/resources.md) with the resource, the command that creates it, and **the exact command that deletes it**.
 2. **Label everything.** Add `--labels=course=ace,week=N` wherever the command supports labels. This lets you find stray resources by label, and the billing export can group costs by label.
 3. **Tear down at the end of every session.** Each week below ends with a **Teardown** block that lists the delete commands in the right order (dependent resources first). Run it, then tick off each row in `notes/resources.md`.
-4. **Prove it's clean.** Run [`scripts/ace-leftovers.sh`](scripts/ace-leftovers.sh) in Cloud Shell (`bash scripts/ace-leftovers.sh ace-fruit-XXXX`). It lists everything still left in the project and exits with a non-zero status if anything billable remains. **Don't end a session until it prints `CLEAN`.**
+4. **Prove it's clean.** Run [`scripts/ace-leftovers.sh`](scripts/ace-leftovers.sh) in Cloud Shell (`bash scripts/ace-leftovers.sh fn-fruits`). It lists everything still left in the project and exits with a non-zero status if anything billable remains. **Don't end a session until it prints `CLEAN`.**
 
 ### Secrets rule: secrets live only in `private/` and are never committed or pushed
 
@@ -121,7 +121,7 @@ The GitHub repo is **public**, so every secret goes in `D:\dev\gcp\private\`. `.
 
 - **What counts as a secret:** DB passwords, service-account key files (avoid creating them at all; use impersonation), access tokens, signed URLs, real `.env` files, `*.tfvars` with passwords, and Terraform state.
 - **How commands use it:** commands read secrets from files, e.g. `--password="$(cat private/fruit-db-pass.txt)"` or `--data-file=private/fruit-db-pass.txt`. Never paste a secret value into a command you'll save in notes.
-- **Notes and ledger:** [`notes/resources.md`](notes/resources.md) and `notes/weekN.md` are public. Write `***` or `private/<file>` instead of a value.
+- **Notes and ledger:** [`notes/resources.md`](notes/resources.md) and `notes/dayNN.md` are public. Write `***` or `private/<file>` instead of a value.
 - **Before every push:** run `git status` and confirm nothing under `private/` appears. Never use `git add -f` on secret files. If a secret is ever pushed, **rotate it immediately** (change the password, delete the key). Removing it from git history is not enough.
 - **Cloud Shell:** `private/` is not in the clone. Upload the file you need through the Cloud Shell editor or `gcloud cloud-shell scp`, and delete it when the session ends.
 - `.env.dev` was committed before this rule (it holds no secret today). Untrack it with `git rm --cached .env.dev` as part of the Week 1 fixes, and keep real values in `private/` from then on.
@@ -140,27 +140,27 @@ Safety nets in case you miss something: the budget alert (item 3 below), the bil
    - **Load balancer forwarding rules**, unused **static external IPs**, **Cloud NAT** gateways and **Cloud VPN** tunnels.
    - **GKE.** Each billing account gets a cluster-management-fee credit covering one zonal or Autopilot cluster. Nodes (Standard) or pod resources (Autopilot) are billed on top. **Never leave a cluster running overnight.**
    - VMs outside the e2-micro free tier, and persistent disks or snapshots left behind after deleting a VM.
-3. **Budget alert (Week 1, day 1).** A budget only *alerts*; it does not stop spending.
-   ```bash
-   gcloud billing accounts list
-   gcloud billing budgets create --billing-account=BILLING_ID \
-     --display-name="ace-study" --budget-amount=20USD \
-     --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0
+3. **Budget alert. Done 2026-11-16:** budget `ace-study`, **15 CAD**, alerts at 50% and 100%, covering every project on the billing account. A budget only *alerts*; it does not stop spending. The billing account ID is in `private/billing-id.txt`.
+   ```powershell
+   $BILLING = (Get-Content private\billing-id.txt).Trim()
+   gcloud billing budgets create --billing-account=$BILLING --display-name="ace-study" --budget-amount=15CAD --threshold-rule=percent=0.5 --threshold-rule=percent=1.0 --billing-project=fn-fruits
+   gcloud billing budgets list --billing-account=$BILLING --billing-project=fn-fruits
    ```
-4. **Daily clean-up check.** Run `bash scripts/ace-leftovers.sh ace-fruit-XXXX` before you stop for the day. It checks Compute Engine, load-balancer pieces, networking, GKE, Cloud SQL, Cloud Run, Functions, Artifact Registry, Cloud Storage, Pub/Sub, Secret Manager, BigQuery, Cloud DNS and Logging. Alert policies and uptime checks have no reliable GA list command, so check them in the console under **Monitoring → Alerting** and **Monitoring → Uptime checks**.
+4. **Daily clean-up check.** Run `bash scripts/ace-leftovers.sh fn-fruits` before you stop for the day. It checks Compute Engine, load-balancer pieces, networking, GKE, Cloud SQL, Cloud Run, Functions, Artifact Registry, Cloud Storage, Pub/Sub, Secret Manager, BigQuery, Cloud DNS and Logging. Alert policies and uptime checks have no reliable GA list command, so check them in the console under **Monitoring → Alerting** and **Monitoring → Uptime checks**.
 5. **Nuclear option.** Deleting the project shuts everything in it down. It stays recoverable for 30 days.
    ```bash
-   gcloud projects delete ace-fruit-XXXX
+   gcloud projects delete fn-fruits
    ```
    Use **one practice project** for the whole course and delete it after the exam.
-6. **Where to run commands.** Cloud Shell (free, bash, `gcloud`, `kubectl`, `terraform` and `docker` preinstalled) is the easiest place. The `\` line continuations below are bash syntax. In local PowerShell, use a backtick `` ` `` instead, or put the command on one line. Use local Docker Desktop and the gcloud CLI only for building and testing the image.
+6. **Where to run commands.** Cloud Shell (free, bash, `gcloud`, `kubectl`, `terraform` and `docker` preinstalled) is the easiest place. The `\` line continuations below are bash syntax. In local PowerShell, use a backtick `` ` `` instead, or put the command on one line. Also in PowerShell, **quote any argument whose value contains a comma**, e.g. `"--labels=course=ace,week=1"`. Otherwise PowerShell turns the comma into an array and gcloud rejects the value. Use local Docker Desktop and the gcloud CLI only for building and testing the image.
 
 ---
 
 ## 3. Week-by-week plan
 
 Each week: about 5 weekday sessions of 2 hours, plus one longer lab of 3–5 hours at the weekend.
-Rhythm: **learn (docs or Skills Boost) → lab on fruit → clean up → write notes in `notes/weekN.md`**.
+Rhythm: **learn (docs or Skills Boost) → lab on fruit → clean up → write notes in `notes/dayNN.md`** (one file per study day, e.g. [`notes/day01.md`](notes/day01.md)).
+
 
 ### Week 1 — Environment, billing, IAM basics, containerise the app (§1, §5.1)
 
@@ -171,7 +171,7 @@ Rhythm: **learn (docs or Skills Boost) → lab on fruit → clean up → write n
 - gcloud configurations
 
 **Hands-on**
-- Install the gcloud CLI on Windows and run `gcloud init`. Create the project `ace-fruit-<random>` and link billing.
+- Install the gcloud CLI on Windows and run `gcloud init`. Create the project `fn-fruits` and link billing.
 - Create the budget (see §2). Enable billing export to a BigQuery dataset `billing_export`.
 - Grant a second Google account `roles/viewer`, then `roles/run.invoker`. Watch the policy change.
 - If you want to practise org policies and folders: a free Cloud Identity Free tenant on a domain you own gives you an org node. Otherwise learn these concepts from the docs.
@@ -179,13 +179,13 @@ Rhythm: **learn (docs or Skills Boost) → lab on fruit → clean up → write n
 
 **gcloud to practise**
 ```bash
-gcloud config configurations create ace; gcloud config set project ace-fruit-XXXX
+gcloud config configurations create ace; gcloud config set project fn-fruits
 gcloud config set compute/region us-central1; gcloud config set compute/zone us-central1-a
-gcloud projects create ace-fruit-XXXX; gcloud billing projects link ace-fruit-XXXX --billing-account=BILLING_ID
+gcloud projects create fn-fruits; gcloud billing projects link fn-fruits --billing-account=BILLING_ID
 gcloud services enable compute.googleapis.com run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com
 gcloud services list --enabled
-gcloud projects get-iam-policy ace-fruit-XXXX --format=json
-gcloud projects add-iam-policy-binding ace-fruit-XXXX --member=user:friend@gmail.com --role=roles/viewer
+gcloud projects get-iam-policy fn-fruits --format=json
+gcloud projects add-iam-policy-binding fn-fruits --member=user:friend@gmail.com --role=roles/viewer
 gcloud iam roles list --filter="name:roles/run" ; gcloud iam roles describe roles/run.invoker
 gcloud compute project-info describe --format="value(quotas)"   # quotas
 ```
@@ -194,10 +194,10 @@ gcloud compute project-info describe --format="value(quotas)"   # quotas
 
 **Teardown (end of the week).** The project, the budget and the `billing_export` dataset are meant to stay until the exam. Everything else goes:
 ```bash
-gcloud projects remove-iam-policy-binding ace-fruit-XXXX --member=user:friend@gmail.com --role=roles/viewer
-gcloud projects remove-iam-policy-binding ace-fruit-XXXX --member=user:friend@gmail.com --role=roles/run.invoker
+gcloud projects remove-iam-policy-binding fn-fruits --member=user:friend@gmail.com --role=roles/viewer
+gcloud projects remove-iam-policy-binding fn-fruits --member=user:friend@gmail.com --role=roles/run.invoker
 docker rm -f $(docker ps -aq --filter ancestor=fruit) ; docker rmi fruit    # local only, no cost
-bash scripts/ace-leftovers.sh ace-fruit-XXXX
+bash scripts/ace-leftovers.sh fn-fruits
 ```
 
 **Checkpoint**
@@ -254,7 +254,7 @@ gcloud compute snapshots delete fruit-snap-1 -q        # plus any made by the sc
 gcloud compute resource-policies delete daily-fruit --region=us-central1 -q
 gcloud compute firewall-rules delete allow-fruit-8080 -q
 gcloud compute disks list                              # must be empty
-bash scripts/ace-leftovers.sh ace-fruit-XXXX
+bash scripts/ace-leftovers.sh fn-fruits
 ```
 
 **Checkpoint**
@@ -275,23 +275,23 @@ bash scripts/ace-leftovers.sh ace-fruit-XXXX
 2. Create the service account `fruit-run-sa` with **no** roles, and deploy fruit to Cloud Run with `--service-account=fruit-run-sa`.
 3. Add `/healthz` or a version field and deploy v2 with `--no-traffic --tag=v2`. Split traffic 90/10, then roll back.
 4. Set `--min-instances=0 --max-instances=2 --concurrency=40`, and compare `--no-allow-unauthenticated` with public access.
-5. Create the bucket `ace-fruit-XXXX-uploads` with uniform access, versioning, and a lifecycle rule (→ Nearline after 30 days, delete after 365). Generate a signed URL.
+5. Create the bucket `fn-fruits-uploads` with uniform access, versioning, and a lifecycle rule (→ Nearline after 30 days, delete after 365). Generate a signed URL.
 6. Write a Cloud Run function (Python) triggered by `google.cloud.storage.object.v1.finalized` that logs the rows of an uploaded `fruits.csv`. This is the Eventarc pattern.
 
 **gcloud to practise**
 ```bash
 gcloud artifacts repositories create fruit-repo --repository-format=docker --location=us-central1
-gcloud builds submit --tag us-central1-docker.pkg.dev/ace-fruit-XXXX/fruit-repo/fruit:v1
+gcloud builds submit --tag us-central1-docker.pkg.dev/fn-fruits/fruit-repo/fruit:v1
 gcloud iam service-accounts create fruit-run-sa --display-name="Fruit Cloud Run SA"
-gcloud run deploy fruit --image=us-central1-docker.pkg.dev/ace-fruit-XXXX/fruit-repo/fruit:v1 --region=us-central1 \
-  --service-account=fruit-run-sa@ace-fruit-XXXX.iam.gserviceaccount.com --allow-unauthenticated --max-instances=2
+gcloud run deploy fruit --image=us-central1-docker.pkg.dev/fn-fruits/fruit-repo/fruit:v1 --region=us-central1 \
+  --service-account=fruit-run-sa@fn-fruits.iam.gserviceaccount.com --allow-unauthenticated --max-instances=2
 gcloud run deploy fruit --image=...:v2 --no-traffic --tag=v2
 gcloud run services update-traffic fruit --to-revisions=LATEST=10 ; gcloud run services update-traffic fruit --to-latest
 gcloud run revisions list --service=fruit
-gcloud storage buckets create gs://ace-fruit-XXXX-uploads --location=us-central1 --uniform-bucket-level-access
-gcloud storage buckets update gs://ace-fruit-XXXX-uploads --versioning --lifecycle-file=lifecycle.json
-gcloud storage cp fruits.csv gs://ace-fruit-XXXX-uploads/ ; gcloud storage sign-url gs://.../fruits.csv --duration=10m --impersonate-service-account=fruit-run-sa@ace-fruit-XXXX.iam.gserviceaccount.com
-gcloud functions deploy fruit-loader --gen2 --runtime=python312 --region=us-central1 --trigger-bucket=ace-fruit-XXXX-uploads --entry-point=on_upload --source=./loader
+gcloud storage buckets create gs://fn-fruits-uploads --location=us-central1 --uniform-bucket-level-access
+gcloud storage buckets update gs://fn-fruits-uploads --versioning --lifecycle-file=lifecycle.json
+gcloud storage cp fruits.csv gs://fn-fruits-uploads/ ; gcloud storage sign-url gs://.../fruits.csv --duration=10m --impersonate-service-account=fruit-run-sa@fn-fruits.iam.gserviceaccount.com
+gcloud functions deploy fruit-loader --gen2 --runtime=python312 --region=us-central1 --trigger-bucket=fn-fruits-uploads --entry-point=on_upload --source=./loader
 ```
 (Signing with impersonation needs no key file, which is the best practice. You need `roles/iam.serviceAccountTokenCreator` on the SA. If you ever do download an SA key, it goes only in `private/`, and you delete the key with `gcloud iam service-accounts keys delete` in the teardown.)
 
@@ -302,10 +302,10 @@ gcloud functions deploy fruit-loader --gen2 --runtime=python312 --region=us-cent
 gcloud functions delete fruit-loader --gen2 --region=us-central1 -q   # also removes its Eventarc trigger
 gcloud run services delete fruit --region=us-central1 -q
 gcloud artifacts repositories delete fruit-repo --location=us-central1 -q
-gcloud storage rm -r gs://ace-fruit-XXXX-uploads
-gcloud storage buckets list --format="value(name)"     # also delete auto-created buckets: ace-fruit-XXXX_cloudbuild, gcf-v2-sources-*, gcf-v2-uploads-*
-gcloud iam service-accounts delete fruit-run-sa@ace-fruit-XXXX.iam.gserviceaccount.com -q
-bash scripts/ace-leftovers.sh ace-fruit-XXXX
+gcloud storage rm -r gs://fn-fruits-uploads
+gcloud storage buckets list --format="value(name)"     # also delete auto-created buckets: fn-fruits_cloudbuild, gcf-v2-sources-*, gcf-v2-uploads-*
+gcloud iam service-accounts delete fruit-run-sa@fn-fruits.iam.gserviceaccount.com -q
+bash scripts/ace-leftovers.sh fn-fruits
 ```
 
 **Checkpoint**
@@ -335,12 +335,12 @@ gcloud sql instances create fruit-sql --database-version=MYSQL_8_0 --edition=ENT
 gcloud sql databases create inventory --instance=fruit-sql
 openssl rand -base64 24 > private/fruit-db-pass.txt          # the password only ever lives in private/
 gcloud sql users create fruit --instance=fruit-sql --password="$(cat private/fruit-db-pass.txt)"
-gcloud sql import sql fruit-sql gs://ace-fruit-XXXX-uploads/inventory.sql --database=inventory
+gcloud sql import sql fruit-sql gs://fn-fruits-uploads/inventory.sql --database=inventory
 gcloud sql backups create --instance=fruit-sql ; gcloud sql backups list --instance=fruit-sql
 gcloud sql backups restore BACKUP_ID --restore-instance=fruit-sql
 gcloud sql instances patch fruit-sql --activation-policy=NEVER    # stop when not in use
 gcloud secrets create fruit-db-pass --data-file=private/fruit-db-pass.txt
-gcloud run deploy fruit --image=... --add-cloudsql-instances=ace-fruit-XXXX:us-central1:fruit-sql --set-secrets=DB_PASS=fruit-db-pass:latest
+gcloud run deploy fruit --image=... --add-cloudsql-instances=fn-fruits:us-central1:fruit-sql --set-secrets=DB_PASS=fruit-db-pass:latest
 bq mk fruit_ds ; bq load --source_format=CSV --autodetect fruit_ds.prices gs://.../prices.csv
 bq query --use_legacy_sql=false --dry_run 'SELECT ...' ; bq ls -j
 gcloud pubsub topics create fruit-events ; gcloud pubsub subscriptions create fruit-sub --topic=fruit-events
@@ -354,9 +354,9 @@ gcloud pubsub topics publish fruit-events --message='{"fruit":"Apple"}' ; gcloud
 gcloud sql instances delete fruit-sql -q              # its backups are deleted with it
 gcloud secrets delete fruit-db-pass -q
 gcloud pubsub subscriptions delete fruit-sub -q ; gcloud pubsub topics delete fruit-events -q
-bq rm -r -f -d ace-fruit-XXXX:fruit_ds
+bq rm -r -f -d fn-fruits:fruit_ds
 # plus the Week 3 teardown block (Cloud Run, Artifact Registry, buckets, service account)
-bash scripts/ace-leftovers.sh ace-fruit-XXXX
+bash scripts/ace-leftovers.sh fn-fruits
 ```
 
 **Checkpoint**
@@ -401,7 +401,7 @@ gcloud dns managed-zones create fruit-internal --dns-name=fruit.internal. --visi
 gcloud compute networks peerings create a-to-b --network=fruit-vpc --peer-network=other-vpc
 gcloud container clusters create-auto fruit-gke --region=us-central1 --network=fruit-vpc --subnetwork=fruit-subnet
 gcloud container clusters get-credentials fruit-gke --region=us-central1
-kubectl create deployment fruit --image=us-central1-docker.pkg.dev/ace-fruit-XXXX/fruit-repo/fruit:v1
+kubectl create deployment fruit --image=us-central1-docker.pkg.dev/fn-fruits/fruit-repo/fruit:v1
 kubectl expose deployment fruit --type=LoadBalancer --port=80 --target-port=8080
 kubectl autoscale deployment fruit --cpu-percent=60 --min=1 --max=3 ; kubectl get hpa
 kubectl set image deployment/fruit fruit=...:v2 ; kubectl rollout status deployment/fruit
@@ -430,7 +430,7 @@ gcloud compute firewall-rules delete fruit-iap-ssh -q
 gcloud compute networks subnets delete fruit-subnet --region=us-central1 -q    # and other-vpc's subnets
 gcloud compute networks delete fruit-vpc other-vpc -q
 gcloud compute disks list                                                      # GKE PVC disks show up here
-bash scripts/ace-leftovers.sh ace-fruit-XXXX
+bash scripts/ace-leftovers.sh fn-fruits
 ```
 
 **Checkpoint**
@@ -460,14 +460,14 @@ bash scripts/ace-leftovers.sh ace-fruit-XXXX
 ```bash
 gcloud logging read 'resource.type="cloud_run_revision" severity>=ERROR' --limit=20 --freshness=1h
 gcloud logging metrics create fruit_not_found --description="404s" --log-filter='jsonPayload.event="fruit_not_found"'
-gcloud logging sinks create fruit-to-bq bigquery.googleapis.com/projects/ace-fruit-XXXX/datasets/logs_ds --log-filter='resource.type="cloud_run_revision"'
+gcloud logging sinks create fruit-to-bq bigquery.googleapis.com/projects/fn-fruits/datasets/logs_ds --log-filter='resource.type="cloud_run_revision"'
 gcloud logging buckets create fruit-logs --location=global --retention-days=7
-gcloud monitoring uptime create fruit-up --resource-type=uptime-url --resource-labels=host=FRUIT_HOST,project_id=ace-fruit-XXXX --path=/healthz
-gcloud iam roles create fruitReader --project=ace-fruit-XXXX --permissions=run.services.get,storage.objects.get --stage=GA
-gcloud projects add-iam-policy-binding ace-fruit-XXXX --member=user:friend@gmail.com --role=projects/ace-fruit-XXXX/roles/fruitReader \
+gcloud monitoring uptime create fruit-up --resource-type=uptime-url --resource-labels=host=FRUIT_HOST,project_id=fn-fruits --path=/healthz
+gcloud iam roles create fruitReader --project=fn-fruits --permissions=run.services.get,storage.objects.get --stage=GA
+gcloud projects add-iam-policy-binding fn-fruits --member=user:friend@gmail.com --role=projects/fn-fruits/roles/fruitReader \
   --condition='expression=request.time < timestamp("2027-01-01T00:00:00Z"),title=temp'
 gcloud iam service-accounts add-iam-policy-binding fruit-run-sa@... --member=user:YOU --role=roles/iam.serviceAccountTokenCreator
-gcloud auth print-access-token --impersonate-service-account=fruit-run-sa@ace-fruit-XXXX.iam.gserviceaccount.com
+gcloud auth print-access-token --impersonate-service-account=fruit-run-sa@fn-fruits.iam.gserviceaccount.com
 gcloud storage ls --impersonate-service-account=fruit-run-sa@...
 ```
 (Alert policies are easiest to create in the console or from a JSON file with `gcloud monitoring policies create --policy-from-file`.)
@@ -479,18 +479,18 @@ gcloud storage ls --impersonate-service-account=fruit-run-sa@...
 gcloud logging sinks delete fruit-to-bq -q ; gcloud logging sinks delete fruit-to-bucket -q
 gcloud logging buckets delete fruit-logs --location=global -q
 gcloud logging metrics delete fruit_not_found -q
-bq rm -r -f -d ace-fruit-XXXX:logs_ds
-gcloud iam roles delete fruitReader --project=ace-fruit-XXXX -q
-gcloud projects remove-iam-policy-binding ace-fruit-XXXX --member=user:friend@gmail.com \
-  --role=projects/ace-fruit-XXXX/roles/fruitReader --all
-gcloud iam service-accounts remove-iam-policy-binding fruit-run-sa@ace-fruit-XXXX.iam.gserviceaccount.com \
+bq rm -r -f -d fn-fruits:logs_ds
+gcloud iam roles delete fruitReader --project=fn-fruits -q
+gcloud projects remove-iam-policy-binding fn-fruits --member=user:friend@gmail.com \
+  --role=projects/fn-fruits/roles/fruitReader --all
+gcloud iam service-accounts remove-iam-policy-binding fruit-run-sa@fn-fruits.iam.gserviceaccount.com \
   --member=user:YOU --role=roles/iam.serviceAccountTokenCreator
 gcloud compute instances delete fruit-vm --zone=us-central1-a -q             # the Ops Agent VM
 # Console: Monitoring → Alerting → delete alert policies and notification channels;
 #          Monitoring → Uptime checks → delete fruit-up;
 #          IAM & Admin → Audit Logs → turn Data Access logs back off.
 # plus the Week 3 teardown block for the Cloud Run service, repo and SA
-bash scripts/ace-leftovers.sh ace-fruit-XXXX
+bash scripts/ace-leftovers.sh fn-fruits
 ```
 
 **Checkpoint**
@@ -504,7 +504,7 @@ bash scripts/ace-leftovers.sh ace-fruit-XXXX
 - Days 3–4: two full timed practice exams. For every wrong answer, write the doc link and the reason in `notes/mistakes.md`.
 - Day 5: rapid review of the gcloud command groups (`compute`, `container`, `run`, `sql`, `storage`, `iam`, `logging`, `billing`), plus `kubectl` and `bq`.
 - Day 6: light review and exam logistics (ID, room check for an online exam).
-- Day 7: **exam.** Afterwards, `gcloud projects delete ace-fruit-XXXX` and check the billing report a few days later.
+- Day 7: **exam.** Afterwards, `gcloud projects delete fn-fruits` and check the billing report a few days later.
 
 ---
 
@@ -518,7 +518,7 @@ bash scripts/ace-leftovers.sh ace-fruit-XXXX
 - **Decision guides:** the "Choose a compute option" and "Choose a database" pages in the Google Cloud docs, and the Architecture Center
 - **Optional third-party practice exams** can help with timing, but always check answers against the official docs.
 
-## 5. Daily log template (`notes/weekN.md`)
+## 5. Daily log template (`notes/dayNN.md`)
 
 ```
 ## Day N – topic

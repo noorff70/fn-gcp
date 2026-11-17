@@ -5,7 +5,7 @@
 # changes or deletes anything, and it never enables an API.
 #
 # Usage (Cloud Shell or Git Bash with the gcloud CLI):
-#   bash scripts/ace-leftovers.sh ace-fruit-XXXX
+#   bash scripts/ace-leftovers.sh fn-fruits
 #
 # Exit codes: 0 = CLEAN (nothing billable left)
 #             1 = billable resources still exist (marked !!)
