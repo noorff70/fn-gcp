@@ -18,6 +18,12 @@ Kept on purpose until the exam: the project itself, the budget, the `billing_exp
 | 2026-11-__ | 1 | Local Docker image `fruit:day2` (PC only, no GCP cost) | `docker build -t fruit:day2 .` | `docker rmi fruit:day2` | [ ] |
 | 2026-11-__ | 1 | Local Docker containers `fruit-day2`, `fruit-day2-port` (PC only) | `docker run -d --name fruit-day2 ...` / `--name fruit-day2-port ...` | `docker rm -f fruit-day2 fruit-day2-port` | [ ] |
 | 2026-11-__ | 1 | Cloud Shell clone `~/fn-gcp` (free) | `git clone https://github.com/noorff70/fn-gcp.git` | `rm -rf ~/fn-gcp` | [ ] |
+| 2026-11-__ | 2 | Firewall rule `allow-fruit-8080` (default VPC, tcp:8080 from my IP → tag `fruit-web`) | `gcloud compute firewall-rules create allow-fruit-8080 ...` | `gcloud compute firewall-rules delete allow-fruit-8080 --quiet` | [ ] |
+| 2026-11-__ | 2 | VM `fruit-vm` (e2-micro, us-central1-a) + 10 GB pd-standard boot disk | `gcloud compute instances create fruit-vm ...` | `gcloud compute instances delete fruit-vm --zone=us-central1-a --quiet` (boot disk goes with it) | [ ] |
+| 2026-11-__ | 2 | Snapshot `fruit-snap-day3` | `gcloud compute disks snapshot fruit-vm --zone=us-central1-a --snapshot-names=fruit-snap-day3` | `gcloud compute snapshots delete fruit-snap-day3 --quiet` | [ ] |
+| 2026-11-__ | 2 | Image `fruit-img-day3` (family `fruit`) | `gcloud compute images create fruit-img-day3 --source-snapshot=fruit-snap-day3 --family=fruit` | `gcloud compute images delete fruit-img-day3 --quiet` | [ ] |
+| 2026-11-__ | 2 | OS Login SSH public key on my profile (added by first `gcloud compute ssh`) | `gcloud compute ssh fruit-vm ...` | `gcloud compute os-login ssh-keys remove --key-file="$HOME\.ssh\google_compute_engine.pub"` | [ ] |
+| 2026-11-__ | 2 | Cloud Shell clone `~/fn-gcp` (free) | `git clone https://github.com/noorff70/fn-gcp.git ~/fn-gcp` | `rm -rf ~/fn-gcp` | [ ] |
 |  |  |  |  |  | [ ] |
 
 ## Session log
