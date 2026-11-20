@@ -23,8 +23,7 @@
 | Git | A single commit on `master` ("FastAPI for a Fruit Project"). |
 
 ### Small fixes to make before deploying anywhere (you do these in Week 1)
-1. `requirements.txt` is saved as **UTF-16**. Re-save it as UTF-8 so `pip install` works reliably inside Linux containers. In PowerShell:
-   `Get-Content requirements.txt | Set-Content -Encoding utf8 requirements.txt`
+1. `requirements.txt` is saved as **UTF-16**. Re-save it as UTF-8 so `pip install` works reliably inside Linux containers. Use the commands in [`notes/day02.md`](notes/day02.md) Step 1. Don't pipe `Get-Content` into `Set-Content` on the same file: that can leave it empty, and in PowerShell 5.1 it adds a BOM.
    Check afterwards that the file has no BOM.
 2. `__pycache__/` folders and `.env.dev` are committed to git. Add a `.gitignore` and run `git rm -r --cached` on them.
 3. `fruit/api/location_api.py` hard-codes `"data/inventory.db"`. Make it use `settings.DATABASE_URL`, as `fruit_api.py` already does.

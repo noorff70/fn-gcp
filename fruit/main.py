@@ -10,3 +10,7 @@ app = FastAPI()
 # • Instead of cluttering this main file with dozens of specific route functions (e.g., fetching a list of fruits or adding a new fruit), you hook them all up at once using this single line.
 app.include_router(fruit_router)
 app.include_router(location_router)
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}

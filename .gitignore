@@ -14,3 +14,7 @@ private/
 .terraform/
 terraform.tfstate
 terraform.tfstate.*
+
+# Python build output
+__pycache__/
+*.pyc

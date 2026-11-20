@@ -1,0 +1,9 @@
+.git
+**/__pycache__
+*.pyc
+.env*
+private/
+notes/
+scripts/
+*.md
+data/inventory1.db
