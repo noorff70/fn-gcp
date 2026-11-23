@@ -35,7 +35,12 @@ Kept on purpose until the exam: the project itself, the budget, the `billing_exp
 | 2026-11-22 | 2 | Instance template `fruit-tpl-v2` (rolling update) | `gcloud compute instance-templates create fruit-tpl-v2 ...` | `gcloud compute instance-templates delete fruit-tpl-v2 --quiet` | [x] |
 | 2026-11-22 | 2 | Spot VM `fruit-spot` (e2-custom-2-4096, us-central1-a) | `gcloud compute instances create fruit-spot --provisioning-model=SPOT ...` | `gcloud compute instances delete fruit-spot --zone=us-central1-a --quiet` | [ x] |
 | 2026-11-22 | 2 | OS Login SSH key (re-added by Step 8 `gcloud compute ssh`) | `gcloud compute ssh ...` | `gcloud compute os-login ssh-keys remove --key-file="$HOME\.ssh\google_compute_engine.pub"` | [x ] |
-|  |  |  |  |  | [ ] |
+|2026-11-23  | 3 | Artifact Registry repo `fruit-repo` (Docker, us-central1) + images `fruit:v1`, `fruit:v2` | `gcloud artifacts repositories create fruit-repo --repository-format=docker --location=us-central1 ...` | `gcloud artifacts repositories delete fruit-repo --location=us-central1 --quiet` (deletes the images) | [x ] |
+|2026-11-23  | 3 | Bucket `gs://fn-fruits_cloudbuild` (made by the first `gcloud builds submit`, holds source uploads) | `gcloud builds submit --tag=...` | `gcloud storage rm --recursive gs://fn-fruits_cloudbuild` | [x ] |
+| 2026-11-23 | 3 | Bucket `gs://904127384278-global-cloudbuild-logs` (made by the first `--tag` build, holds build logs) | `gcloud builds submit --tag=...` | `gcloud storage rm --recursive gs://904127384278-global-cloudbuild-logs` | [ x] |
+|2026-11-23  | 3 | Service account `fruit-run-sa` (no roles) | `gcloud iam service-accounts create fruit-run-sa ...` | `gcloud iam service-accounts delete fruit-run-sa@fn-fruits.iam.gserviceaccount.com --quiet` | [x ] |
+|2026-11-23  | 3 | Cloud Run service `fruit` (us-central1, revisions v1 + v2, max 2 instances) | `gcloud run deploy fruit --image=... --service-account=... ...` | `gcloud run services delete fruit --region=us-central1 --quiet` | [x ] |
+|2026-11-23  | 3 | Cloud Run job `fruit-job` (optional Step 8) | `gcloud run jobs create fruit-job ...` | `gcloud run jobs delete fruit-job --region=us-central1 --quiet` | [x ] |
 
 ## Session log
 

@@ -22,11 +22,12 @@ class FakeFruitRepository:
             ),
         ]
 
-    def test_service_sorting():
-        service = FruitService(FakeFruitRepository())
 
-        fruits = service.get_fruits_with_types()
+def test_service_sorting():
+    service = FruitService(FakeFruitRepository())
 
-        assert fruits[0].fruit.fruit_name == "Apple"
-        assert fruits[1].fruit.fruit_name == "Banana"
+    fruits = service.get_fruits_with_types()
+
+    assert fruits[0].fruit.fruit_name == "Apple"
+    assert fruits[1].fruit.fruit_name == "Banana"
 
